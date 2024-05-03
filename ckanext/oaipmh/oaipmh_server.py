@@ -177,92 +177,139 @@ class CKANServer(ResumptionOAIPMH):
         '''Show a tuple of a header and metadata for this dataset.
         '''
         package = get_action('package_show')({}, {'id': dataset.id})
-        # Loops through extras -table:
-        extras = {}
-        for item in package['extras']:
-            for key, value in item.items():
-                key = item['key']   # extras table is constructed as key: language, value: English
-                value = item['value']  # instead of language : English, that is why it is looped here
-                if key in ['spatial']:
-                    extras.update({key: value})
-                else:
-                    values = value.split(";")
-                    extras.update({key: values})
 
-        temporal_begin = extras.get('TemporalCoverage:BeginDate')
-        temporal_end = extras.get('TemporalCoverage:EndDate')
+        descriptions = []
+        titles = []
+        publishers = []
+        subjects = []
+        funders = []
+        creators = []
         dates = []
-        if temporal_begin or temporal_end:
-            begin = temporal_begin[0] if temporal_begin else ''
-            end = temporal_end[0] if temporal_end else ''
-            dates.append("%s/%s" % (begin, end))
+        version = ''
+        rights_list = []
+        resource_type = []
+        related_ids = []
+        geo_locations = []
 
-        # identifiers = self._set_id(package, extras)
-        subj = [tag.get('display_name') for tag in package['tags']] if package.get('tags', None) else None
-        if subj is not None and 'Discipline' in extras:
-            subj.extend(extras['Discipline'])
+        # not used, for backward purposes only - to be deleted later
+        extras = {}
 
-        author = package.get('author')
-        if author:
-            authors = [a for a in author.split(";")]
-        else:
-            authors = None
+        if package['type'] == 'measure':
+            print('----------------------------------------')
+            for study in package['study']:  # !! HIER GAAT NOG IETS MIS - NOTES staat niet in package
+                print(study['study_alternate_title'])
+                # print(notes)
+                if 'notes' in study: 
+                    # [{'description': notes, 'descriptionType': 'Abstract', 'lang': 'nl'}]
+                    descriptions.append(study['notes'])
 
-        place = extras['SpatialCoverage'] if 'SpatialCoverage' in extras else None
-        place = None
-        if 'SpatialCoverage' in extras:
-            place = extras['SpatialCoverage']
-            place = place[-1].strip()
+            print(descriptions) 
 
-        bbox = point = None
+            # Titles
+            titles = [{"title": package["title"], "lang": "nl"}]
+            print(titles)
 
-        if 'spatial' in extras:
-            spatial = extras['spatial']
-            try:
-                geom = shapely.wkt.loads(spatial)
-                if geom.geometryType() == 'Polygon':
-                    coords = geom.bounds
-                    bbox = '{west},{east},{south},{north}'.format(west=coords[0], east=coords[2], south=coords[1], north=coords[3])
-                elif geom.geometryType() == 'Point':
-                    point = '{x},{y}'.format(x=geom.x, y=geom.y)
-            except Exception as e:
-                log.exception(f"spatial error dataset ID: {dataset.id}")
+            # Publishers
+            for study in package['study']:
+                for study_publisher in study.get('study_publisher', []):
+                    publishers.append({'Name': study_publisher['study_publisher_name'],
+                                       'Identifier': study_publisher['study_publisher_identifier'],
+                                       'IdentifierType': study_publisher['study_publisher_identifier_type']
+                                       # 'schemeURI': self.ckan_package['study_publisher_identifier_schemeuri']
+                                       })        
 
-        meta = {
-            'DOI': extras['DOI'] if 'DOI' in extras else None,
-            'PID': extras['PID'] if 'PID' in extras else None,
-            'version': extras['Version'] if 'Version' in extras else None,
+            # Subjects
+            for construct in package['dc_constructs']:
+                subjects.append({'subject': construct['dc_construct'], 'subjectScheme': 'CID construct'})
+
+            # keywords
+            for label in package['dc_labels']:
+                subjects.append({'subject': label['dc_label'], 'subjectScheme': 'CID keyword'})
+
+            # mode of collection
+            for moc in package['dc_modes_of_collection']:
+                subjects.append({'subject': moc['dc_mode_of_collection'], 'subjectScheme': 'CID collection mode'})
+
+            # Funders - none present
+            # funders = []
+
+            # Creators  / authors
+            study = package['owner_org']
+            for title in package['study']:
+                creators.append({'name': study + ' - ' + title['title'], 'nameType': 'Organizational'})
+
+            # No Contributors
+        
+            # Dates
+            for wave in package['wave']:
+                # both start and end date have to be present
+                start = wave.get('wave_start_date_collection', None)
+                end = wave.get('wave_end_date_collection', None)
+                if start is not None and end is not None:
+                    dates.append({'date': '{}/{}'.format(start, end),
+                                  'dateType': 'Collected',
+                                  'dateInformation': wave['wave_description']})
+
+            # Version - not present
+            # version = ''
+
+            # rights list
+            rights_list = []
+            for study in package['study']:
+                for access in study['study_data_access']:
+                    rights_list.append({'rights': access['study_data_access_description'],
+                                        'rightsUri': access['study_data_access_URL']})
+
+            # resource type
+            resource_type = {"resourceTypeGeneral": 'Dataset', "resourceType": 'Research Data'}
+
+            # related resources
+            for cohort in package['cohort']:
+                for ref in cohort.get('study_references', []):
+                    related_ids.append({'relatedIdentifier': ref['study_reference_identifier'],
+                                        'relatedIdentifierType': ref['study_reference_identifier_type'],
+                                        'relationType': 'IsSupplementedBy'})
+
+            for ref in package['dc_measurement_references']:
+                related_ids.append({'relatedIdentifier': ref['dc_measurements_references_doi'],
+                                    'relatedIdentifierType': 'DOI',
+                                    'relationType': 'IsDocumentedBy'})
+        
+            # Geo locations
+            geo_locations = [{'geoLocationPlace': 'NL'}]
+
+        metadata = {
+            'DOI': package['DOI'] if 'DOI' in package else None,
+            'PID': package['PID'] if 'PID' in package else None,
+            'version': 'version',
             'source': package.get('url', None),
-            'relatedIdentifier': extras['RelatedIdentifier'] if 'RelatedIdentifier' in extras else None,
-            'creator': authors if authors else None,
-            'publisher': extras['Publisher'] if 'Publisher' in extras else None,
-            'publicationYear': extras['PublicationYear'] if 'PublicationYear' in extras else None,
-            'publicationTimestamp': extras['PublicationTimestamp'] if 'PublicationTimestamp' in extras else None,
-            'resourceType': extras['ResourceType'] if 'ResourceType' in extras else None,
-            'language': extras['Language'] if 'Language' in extras else None,
-            'titles': package.get('title', None) or package.get('name'),
-            'contributor': extras['Contributor'] if 'Contributor' in extras else None,
-            'descriptions': self._get_json_content(package.get('notes')) if package.get('notes', None) else None,
-            'subjects': subj,
-            'rights': extras['Rights'] if 'Rights' in extras else None,
-            'openAccess': extras['OpenAccess'] if 'OpenAccess' in extras else None,
-            'size': extras['Size'] if 'Size' in extras else None,
-            'format': extras['Format'] if 'Format' in extras else None,
-            'fundingReference': extras['FundingReference'] if 'FundingReference' in extras else None,
-            'dates': dates if dates else None,
-            'spatialCoverage': [place, point, bbox],
+            'relatedIdentifier': related_ids,
+            'creator': creators,
+            'publisher': publishers,
+            # 'publicationYear': ??? 
+            # 'publicationTimestamp': ???
+            'resourceType': resource_type,
+            'language': 'nl',
+            'titles': titles,
+            # 'contributor': contributors,  # No contributors at this time,
+            'descriptions': descriptions,
+            'subjects': subjects,
+            'rights': rights_list,
+            # 'size': extras['Size'] if 'Size' in extras else None,
+            # 'format': extras['Format'] if 'Format' in extras else None,
+            'fundingReference': funders,  # no funders at this time
+            'dates': dates,
+            'spatialCoverage': geo_locations,
         }
 
-        metadata = {}
-        # Fixes the bug on having a large dataset being scrambled to individual
-        # letters
-        for key, value in meta.items():
-            if value and not isinstance(value, list):
-                metadata[str(key)] = [value]
-            else:
-                metadata[str(key)] = value
-        base_url, identifier = self._provinfo(extras['MetaDataAccess'][0])
-        if "datacatalogue.cessda.eu" in base_url and 'origin_prov' in extras:
+
+        '''
+        # Taken out the about part entirely - not present in yoda either: https://public.yoda.uu.nl/oai/oai?verb=ListRecords&metadataPrefix=datacite
+
+        base_url = 'cd2.ckan.test/blabla/'
+        identifier = dataset.id
+
+        if False:  # "datacatalogue.cessda.eu" in base_url and 'origin_prov' in extras:
             try:
                 origin_prov = extras['origin_prov'][0].split('|')
                 date_format = "%Y-%m-%dT%H:%M:%SZ"
@@ -281,6 +328,7 @@ class CKANServer(ResumptionOAIPMH):
                 origin_desc = None
         else:
             origin_desc = None
+
         about = common.About(
             '', 
             base_url, 
@@ -290,11 +338,13 @@ class CKANServer(ResumptionOAIPMH):
             dataset.metadata_modified,
             ','.join(extras.get('repositoryID', [])), 
             ','.join(extras.get('repositoryName', [])),
-            origin_desc,
+            # origin_desc,
         )
+        '''
+        # Taken out the about part - not present in yoda either: https://public.yoda.uu.nl/oai/oai?verb=ListRecords&metadataPrefix=datacite
         return (common.Header('', dataset.name, dataset.metadata_modified, set_spec, False),
                 common.Metadata('', metadata),
-                about,
+                None,
         )
 
 
@@ -395,6 +445,13 @@ class CKANServer(ResumptionOAIPMH):
         '''
         packages = []
         if not set:
+            all = Session.query(Package).filter(Package.type=='measure').all()
+
+            # all = Session.query(Package).all()  # .filter(Package.type=='measure').all()
+            # print(all)
+
+            return all
+
             packages = Session.query(Package).filter(Package.type=='dataset'). \
                 filter(Package.state == 'active').filter(Package.private!=True)
             if from_ and not until:
@@ -473,6 +530,15 @@ class CKANServer(ResumptionOAIPMH):
     def listMetadataFormats(self, identifier=None):
         '''List available metadata formats.
         '''
+        # only return datacite as metadataformat 
+        return [('oai_datacite',
+                 'http://schema.datacite.org/meta/kernel-4.3/metadata.xsd',
+                 'http://datacite.org/schema/kernel-4'),
+                # ('rdf',
+                # 'http://www.openarchives.org/OAI/2.0/rdf.xsd',
+                # 'http://www.openarchives.org/OAI/2.0/rdf/')
+                ]
+        
         return [('oai_dc',
                  'http://www.openarchives.org/OAI/2.0/oai_dc.xsd',
                  'http://www.openarchives.org/OAI/2.0/oai_dc/'),
