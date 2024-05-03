@@ -25,12 +25,15 @@ def b2find_oai():
         if verb:
             client = CKANServer()
             metadata_registry = oaimd.MetadataRegistry()
-            metadata_registry.registerReader('oai_dc', oaimd.oai_dc_reader)
-            metadata_registry.registerWriter('oai_dc', oaisrv.oai_dc_writer)
+            # metadata_registry.registerReader('oai_dc', oaimd.oai_dc_reader)
+            # metadata_registry.registerWriter('oai_dc', oaisrv.oai_dc_writer)
             # metadata_registry.registerReader('rdf', rdf_reader)
             # metadata_registry.registerWriter('rdf', dcat2rdf_writer)
+            # Only have oai_datacite as an acitve metadata format
             metadata_registry.registerWriter('oai_datacite', datacite_writer)
-            metadata_registry.registerWriter('oai_eudatcore', eudatcore_writer)
+
+            # metadata_registry.registerWriter('oai_eudatcore', eudatcore_writer)
+
             serv = oaisrv.BatchingServer(client,
                                          metadata_registry=metadata_registry,
                                          resumption_batch_size=300)

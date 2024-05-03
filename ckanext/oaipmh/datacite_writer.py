@@ -82,6 +82,8 @@ def datacite_writer(element, metadata):
     map = metadata.getMap()
     for k, v in map.items():
         if v:
+            print(k)
+            print(v)
             if k == 'version':
                 if v:
                     e_version = SubElement(e_r, nsdatacite('version'))
@@ -89,8 +91,8 @@ def datacite_writer(element, metadata):
                 continue
             if k == 'titles':
                 e_titles = SubElement(e_r, nsdatacite(k))
-                e_title_primary = SubElement(e_titles, nsdatacite('title'))
-                e_title_primary.text = v[0]
+                e_title_primary = SubElement(e_titles, nsdatacite('title'), language=v[0]['lang'])
+                e_title_primary.text = v[0]['title']
                 continue
             if k == 'descriptions':
                 e_descs = SubElement(e_r, nsdatacite(k))
@@ -98,28 +100,37 @@ def datacite_writer(element, metadata):
                 e_desc.text = v[0]
                 continue
             if k == 'resourceType':
-                rtg = _map_resource_type(v[0])
-                e_resourceType = SubElement(e_r, nsdatacite(k), resourceTypeGeneral=rtg)
-                e_resourceType.text = v[0]
+                # rtg = _map_resource_type(v[0])
+                e_resourceType = SubElement(e_r, nsdatacite(k), resourceTypeGeneral=v['resourceTypeGeneral'])
+                e_resourceType.text = v['resourceType']
                 continue
             if k == 'subjects':
                 e_subjects = SubElement(e_r, nsdatacite(k))
                 for subject in v:
-                    e_subject = SubElement(e_subjects, nsdatacite('subject'))
-                    e_subject.text = subject
+                    # 'subject': moc['dc_mode_of_collection'], 'subjectScheme':
+                    e_subject = SubElement(e_subjects, nsdatacite('subject'), subjectScheme=subject['subjectScheme'])
+                    e_subject.text = subject['subject']
                 continue
             if k == 'creator':
                 e_creators = SubElement(e_r, nsdatacite('creators'))
-                for creatorName in v:
-                    name,orcid = _parse_orcid(creatorName)
+                for creator in v:
+                    # v['name'], v['nameType']
                     e_creator = SubElement(e_creators, nsdatacite(k))
-                    e_creatorName = SubElement(e_creator, nsdatacite('creatorName'))
-                    e_creatorName.text = name
-                    if orcid:
-                        e_nameIdentifier = SubElement(e_creator, nsdatacite('nameIdentifier'), nameIdentifierScheme='ORCID')
-                        e_nameIdentifier.text = orcid
+                    e_creatorName = SubElement(e_creator, nsdatacite('creatorName'), nameType=creator['nameType'])
+                    e_creatorName.text = creator['name']
+                    
+                continue
+                # for creatorName in v:
+                #    name,orcid = _parse_orcid(creatorName)
+                #    e_creator = SubElement(e_creators, nsdatacite(k))
+                #    e_creatorName = SubElement(e_creator, nsdatacite('creatorName'))
+                #    e_creatorName.text = name
+                #    if orcid:
+                #        e_nameIdentifier = SubElement(e_creator, nsdatacite('nameIdentifier'), nameIdentifierScheme='ORCID')
+                #        e_nameIdentifier.text = orcid
                 continue
             if k == 'contributor':
+                # No contributors at this time
                 e_contributors = SubElement(e_r, nsdatacite('contributors'))
                 for contributorName in v:
                     e_contributor = SubElement(e_contributors, nsdatacite(k), contributorType="Other")
@@ -127,8 +138,12 @@ def datacite_writer(element, metadata):
                     e_contributorName.text = contributorName
                 continue
             if k == 'publisher':
-                e_publisher = SubElement(e_r, nsdatacite('publisher'))
-                e_publisher.text = v[0]
+                # 'Name': study_publisher['study_publisher_name'],
+                #                       'Identifier': study_publisher['study_publisher_identifier'],
+                #                       'IdentifierType': study_publisher['study_publisher_identifier_type']
+                # Only take the first
+                e_publisher = SubElement(e_r, nsdatacite('publisher'), Identifier=v[0]['Identifier'], IdentifierType=v[0]['IdentifierType'])
+                e_publisher.text = v[0]['Name']
                 continue
             if k == 'language':
                 e_language = SubElement(e_r, nsdatacite('language'))
@@ -154,9 +169,12 @@ def datacite_writer(element, metadata):
                 if v:
                     e_spatial_coverages = SubElement(e_r, nsdatacite('geoLocations'))
                     e_spatial_coverage = SubElement(e_spatial_coverages, nsdatacite('geoLocation'))
+                    # Only take first one into account
                     if v[0]:
+                        # [{'geoLocationPlace': 'NL'}]
                         e_spatial_places = SubElement(e_spatial_coverage, nsdatacite('geoLocationPlace'))
-                        e_spatial_places.text = v[0]
+                        e_spatial_places.text = v[0]['geoLocationPlace']
+                    '''
                     if v[1]:
                         values = v[1].split(',')
                         e_point = SubElement(e_spatial_coverage, nsdatacite('geoLocationPoint'))
@@ -175,12 +193,15 @@ def datacite_writer(element, metadata):
                         e_bbox_south.text = values[2]
                         e_bbox_north = SubElement(e_bbox, nsdatacite('northBoundLatitude'))
                         e_bbox_north.text = values[3]
+                    '''
                 continue
             if k == 'rights':
                 e_rightslist = SubElement(e_r, nsdatacite('rightsList'))
                 for rights in v:
-                    e_rights = SubElement(e_rightslist, nsdatacite(k))  # rightsURI="info:eu-repo/semantics/openAccess")
-                    e_rights.text = rights
+                    # {'rights': access['study_data_access_description'],
+                    #                    'rightsUri': access['study_data_access_URL']}
+                    e_rights = SubElement(e_rightslist, nsdatacite(k), rightsURI=rights['rightsUri'])
+                    e_rights.text = rights['rights']
                 continue
             if k == 'fundingReference':
                 e_funds = SubElement(e_r, nsdatacite('fundingReferences'))
@@ -204,9 +225,12 @@ def datacite_writer(element, metadata):
             if k == 'dates':
                 e_dates = SubElement(e_r, nsdatacite(k))
                 for event in v:
-                    e_date = SubElement(e_dates, nsdatacite('date'))
-                    e_date.text = event
-                    e_date.set('dateType', 'Collected')
+                    # {'date': '{}/{}'.format(start, end),
+                    #              'dateType': 'Collected',
+                    #              'dateInformation': wave['wave_description']}
+                    e_date = SubElement(e_dates, nsdatacite('date'), dateType=event['dateType'], dateInformation=event['dateInformation'])
+                    e_date.text = event['date']
+                    # e_date.set('dateType', 'Collected')
                     # e_date.set('dateType', event_to_dt[event['type']])
                 continue
             if k == 'DOI':
@@ -231,16 +255,18 @@ def datacite_writer(element, metadata):
                 e_rel_ids = SubElement(e_r, nsdatacite('relatedIdentifiers'))
                 for relid in v:
                     relid_parts = [""] * 3
-                    count = 0
-                    values = relid.split("|")[:3]
-                    for value in values:
-                        relid_parts[count] = value
-                        count += 1
-                    url = relid_parts[0]
-                    id_type = relid_parts[1]
-                    rel_type = relid_parts[2]
-                    e_rel_id = SubElement(e_rel_ids, nsdatacite('relatedIdentifier'), relatedIdentifierType=id_type, relationType=rel_type)
-                    e_rel_id.text = url
+                    # count = 0
+                    # values = relid.split("|")[:3]
+                    # for value in values:
+                    #    relid_parts[count] = value
+                    #    count += 1
+                    # url = relid_parts[0]
+                    # id_type = relid_parts[1]
+                    # rel_type = relid_parts[2]
+                    # e_rel_id = SubElement(e_rel_ids, nsdatacite('relatedIdentifier'), relatedIdentifierType=id_type, relationType=rel_type)
+                    # e_rel_id.text = url
+                    e_rel_id = SubElement(e_rel_ids, nsdatacite('relatedIdentifier'), relatedIdentifierType=relid['relatedIdentifierType'], relationType=relid['relationType'])
+                    e_rel_id.text = relid['relatedIdentifier']
                 continue
 
 
