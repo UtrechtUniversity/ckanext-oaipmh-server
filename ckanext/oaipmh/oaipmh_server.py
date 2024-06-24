@@ -195,19 +195,11 @@ class CKANServer(ResumptionOAIPMH):
         extras = {}
 
         if package['type'] == 'measure':
-            print('----------------------------------------')
-            for study in package['study']:  # !! HIER GAAT NOG IETS MIS - NOTES staat niet in package
-                print(study['study_alternate_title'])
-                # print(notes)
-                if 'notes' in study: 
-                    # [{'description': notes, 'descriptionType': 'Abstract', 'lang': 'nl'}]
-                    descriptions.append(study['notes'])
-
-            print(descriptions) 
+            if package.get('notes'):
+                descriptions.append(package.get('notes'))
 
             # Titles
             titles = [{"title": package["title"], "lang": "nl"}]
-            print(titles)
 
             # Publishers
             for study in package['study']:
@@ -236,7 +228,7 @@ class CKANServer(ResumptionOAIPMH):
             # Creators  / authors
             study = package['owner_org']
             for title in package['study']:
-                creators.append({'name': study + ' - ' + title['title'], 'nameType': 'Organizational'})
+                creators.append({'name':title['title'], 'nameType': 'Organizational'})
 
             # No Contributors
         
@@ -286,7 +278,7 @@ class CKANServer(ResumptionOAIPMH):
             'relatedIdentifier': related_ids,
             'creator': creators,
             'publisher': publishers,
-            # 'publicationYear': ??? 
+            'publicationYear': '2024',  # must be made dynamic
             # 'publicationTimestamp': ???
             'resourceType': resource_type,
             'language': 'nl',
@@ -445,14 +437,18 @@ class CKANServer(ResumptionOAIPMH):
         '''
         packages = []
         if not set:
+            """
             all = Session.query(Package).filter(Package.type=='measure').all()
+
+            print(from_)
+            print(until)
 
             # all = Session.query(Package).all()  # .filter(Package.type=='measure').all()
             # print(all)
 
             return all
-
-            packages = Session.query(Package).filter(Package.type=='dataset'). \
+            """
+            packages = Session.query(Package).filter(Package.type=='measure'). \
                 filter(Package.state == 'active').filter(Package.private!=True)
             if from_ and not until:
                 packages = packages.filter(Package.metadata_modified > from_)
@@ -469,7 +465,7 @@ class CKANServer(ResumptionOAIPMH):
             group = Group.get(set)
             if group:
                 # Note that group.packages never returns private datasets regardless of 'with_private' parameter.
-                packages = group.packages(return_query=True, with_private=False).filter(Package.type=='dataset'). \
+                packages = group.packages(return_query=True, with_private=False).filter(Package.type=='measure'). \
                     filter(Package.state == 'active')
                 if from_ and not until:
                     packages = packages.filter(Package.metadata_modified > from_)
