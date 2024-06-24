@@ -82,8 +82,6 @@ def datacite_writer(element, metadata):
     map = metadata.getMap()
     for k, v in map.items():
         if v:
-            print(k)
-            print(v)
             if k == 'version':
                 if v:
                     e_version = SubElement(e_r, nsdatacite('version'))
@@ -138,16 +136,13 @@ def datacite_writer(element, metadata):
                     e_contributorName.text = contributorName
                 continue
             if k == 'publisher':
-                # 'Name': study_publisher['study_publisher_name'],
-                #                       'Identifier': study_publisher['study_publisher_identifier'],
-                #                       'IdentifierType': study_publisher['study_publisher_identifier_type']
                 # Only take the first
                 e_publisher = SubElement(e_r, nsdatacite('publisher'), Identifier=v[0]['Identifier'], IdentifierType=v[0]['IdentifierType'])
                 e_publisher.text = v[0]['Name']
                 continue
             if k == 'language':
                 e_language = SubElement(e_r, nsdatacite('language'))
-                e_language.text = v[0]
+                e_language.text = v
                 continue
             if k == 'format':
                 e_formats = SubElement(e_r, nsdatacite('formats'))
@@ -163,7 +158,7 @@ def datacite_writer(element, metadata):
                 continue
             if k == 'publicationYear':
                 e_publicationYear = SubElement(e_r, nsdatacite('publicationYear'))
-                e_publicationYear.text = str(v[0])
+                e_publicationYear.text = v
                 continue
             if k == 'spatialCoverage':
                 if v:
@@ -174,32 +169,10 @@ def datacite_writer(element, metadata):
                         # [{'geoLocationPlace': 'NL'}]
                         e_spatial_places = SubElement(e_spatial_coverage, nsdatacite('geoLocationPlace'))
                         e_spatial_places.text = v[0]['geoLocationPlace']
-                    '''
-                    if v[1]:
-                        values = v[1].split(',')
-                        e_point = SubElement(e_spatial_coverage, nsdatacite('geoLocationPoint'))
-                        e_point_long = SubElement(e_point, nsdatacite('pointLongitude'))
-                        e_point_long.text = values[0]
-                        e_point_lat = SubElement(e_point, nsdatacite('pointLatitude'))
-                        e_point_lat.text = values[1]
-                    elif v[2]:
-                        values = v[2].split(',')
-                        e_bbox = SubElement(e_spatial_coverage, nsdatacite('geoLocationBox'))
-                        e_bbox_west = SubElement(e_bbox, nsdatacite('westBoundLongitude'))
-                        e_bbox_west.text = values[0]
-                        e_bbox_east = SubElement(e_bbox, nsdatacite('eastBoundLongitude'))
-                        e_bbox_east.text = values[1]
-                        e_bbox_south = SubElement(e_bbox, nsdatacite('southBoundLatitude'))
-                        e_bbox_south.text = values[2]
-                        e_bbox_north = SubElement(e_bbox, nsdatacite('northBoundLatitude'))
-                        e_bbox_north.text = values[3]
-                    '''
                 continue
             if k == 'rights':
                 e_rightslist = SubElement(e_r, nsdatacite('rightsList'))
                 for rights in v:
-                    # {'rights': access['study_data_access_description'],
-                    #                    'rightsUri': access['study_data_access_URL']}
                     e_rights = SubElement(e_rightslist, nsdatacite(k), rightsURI=rights['rightsUri'])
                     e_rights.text = rights['rights']
                 continue
@@ -225,13 +198,8 @@ def datacite_writer(element, metadata):
             if k == 'dates':
                 e_dates = SubElement(e_r, nsdatacite(k))
                 for event in v:
-                    # {'date': '{}/{}'.format(start, end),
-                    #              'dateType': 'Collected',
-                    #              'dateInformation': wave['wave_description']}
                     e_date = SubElement(e_dates, nsdatacite('date'), dateType=event['dateType'], dateInformation=event['dateInformation'])
                     e_date.text = event['date']
-                    # e_date.set('dateType', 'Collected')
-                    # e_date.set('dateType', event_to_dt[event['type']])
                 continue
             if k == 'DOI':
                 e_id = SubElement(e_r, nsdatacite('identifier'), identifierType='DOI')
@@ -255,16 +223,6 @@ def datacite_writer(element, metadata):
                 e_rel_ids = SubElement(e_r, nsdatacite('relatedIdentifiers'))
                 for relid in v:
                     relid_parts = [""] * 3
-                    # count = 0
-                    # values = relid.split("|")[:3]
-                    # for value in values:
-                    #    relid_parts[count] = value
-                    #    count += 1
-                    # url = relid_parts[0]
-                    # id_type = relid_parts[1]
-                    # rel_type = relid_parts[2]
-                    # e_rel_id = SubElement(e_rel_ids, nsdatacite('relatedIdentifier'), relatedIdentifierType=id_type, relationType=rel_type)
-                    # e_rel_id.text = url
                     e_rel_id = SubElement(e_rel_ids, nsdatacite('relatedIdentifier'), relatedIdentifierType=relid['relatedIdentifierType'], relationType=relid['relationType'])
                     e_rel_id.text = relid['relatedIdentifier']
                 continue
