@@ -262,11 +262,12 @@ class CKANServer(ResumptionOAIPMH):
                                         'relatedIdentifierType': ref['study_reference_identifier_type'],
                                         'relationType': 'IsSupplementedBy'})
 
-            for ref in package['dc_measurement_references']:
-                related_ids.append({'relatedIdentifier': ref['dc_measurements_references_doi'],
-                                    'relatedIdentifierType': 'DOI',
-                                    'relationType': 'IsDocumentedBy'})
-        
+            for ref in package.get('dc_measurement_references', []):
+                if 'dc_measurements_references_doi' in ref:
+                    related_ids.append({'relatedIdentifier': ref['dc_measurements_references_doi'],
+                                        'relatedIdentifierType': 'DOI',
+                                        'relationType': 'IsDocumentedBy'})
+
             # Geo locations
             geo_locations = [{'geoLocationPlace': 'NL'}]
 
