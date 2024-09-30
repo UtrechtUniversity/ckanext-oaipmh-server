@@ -272,7 +272,7 @@ class CKANServer(ResumptionOAIPMH):
             geo_locations = [{'geoLocationPlace': 'NL'}]
 
         metadata = {
-            'DOI': package['DOI'] if 'DOI' in package else None,
+            'DOI': [package['dc_DOI'][0]['dc_pid']] if 'dc_DOI' in package else None,
             'PID': package['PID'] if 'PID' in package else None,
             'version': 'version',
             'source': package.get('url', None),
