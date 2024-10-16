@@ -198,7 +198,7 @@ def datacite_writer(element, metadata):
             if k == 'dates':
                 e_dates = SubElement(e_r, nsdatacite(k))
                 for event in v:
-                    e_date = SubElement(e_dates, nsdatacite('date'), dateType=event['dateType'], dateInformation=event['dateInformation'])
+                    e_date = SubElement(e_dates, nsdatacite('date'), dateType=event['dateType'])
                     e_date.text = event['date']
                 continue
             if k == 'DOI':

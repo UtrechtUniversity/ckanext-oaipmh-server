@@ -239,8 +239,7 @@ class CKANServer(ResumptionOAIPMH):
                 end = wave.get('wave_end_date_collection', None)
                 if start is not None and end is not None:
                     dates.append({'date': '{}/{}'.format(start, end),
-                                  'dateType': 'Collected',
-                                  'dateInformation': wave['wave_description']})
+                                  'dateType': 'Collected'})
 
             # Version - not present
             # version = ''
