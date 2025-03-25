@@ -1,6 +1,6 @@
 import logging
-import os
 from ckan.plugins import implements, SingletonPlugin
+from ckan.plugins import toolkit as tk
 #from ckan.plugins import IRoutes, IConfigurer
 from ckan.plugins import IConfigurer
 from ckan.plugins import IBlueprint
@@ -28,11 +28,7 @@ class OAIPMHPlugin(SingletonPlugin):
         customised package form defined in ``package_form.py`` in this
         directory.
         """
-        here = os.path.dirname(__file__)
-        rootdir = os.path.dirname(os.path.dirname(here))
-        template_dir = os.path.join(rootdir, 'ckanext',
-                                    'oaipmh', 'templates')
-        config['extra_template_paths'] = ','.join([template_dir, config.get('extra_template_paths', '')])
+        tk.add_template_directory(config, 'templates')
 
     #IBlueprint
     def get_blueprint(self):
